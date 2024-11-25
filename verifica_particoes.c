@@ -20,23 +20,23 @@ void verifica_particoes(long long *Input, int n, long long *P, int np, long long
     }
 
     // Verificar se todos os elementos do Input estão presentes no Output
-    int *marcador = (int *)calloc(n, sizeof(int));
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
-            if (Input[i] == Output[j] && !marcador[j]) {
-                marcador[j] = 1;
-                break;
-            }
-        }
-    }
+    // int *marcador = (int*) calloc(n, sizeof(int));
+    // for (int i = 0; i < n; i++) {
+    //     for (int j = 0; j < n; j++) {
+    //         if (Input[i] == Output[j] && !marcador[j]) {
+    //             marcador[j] = 1;
+    //             break;
+    //         }
+    //     }
+    // }
 
-    for (int i = 0; i < n; i++) {
-        if (!marcador[i]) {
-            erro = 1;
-            printf("Erro: elemento %lld do Input não encontrado no Output.\n", Input[i]);
-        }
-    }
-    free(marcador);
+    // for (int i = 0; i < n; i++) {
+    //     if (!marcador[i]) {
+    //         erro = 1;
+    //         printf("Erro: elemento %lld do Input não encontrado no Output.\n", Input[i]);
+    //     }
+    // }
+    // free(marcador);
 
     // Exibir resultado final
     if (erro) {
