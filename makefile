@@ -6,14 +6,17 @@ name = multi-partition
 
 all: $(name)
 
-$(name): main.o chrono.o
-	gcc -o $(name) main.o chrono.o $(flags)
+$(name): main.o chrono.o verifica_particoes.o
+	gcc -o $(name) main.o chrono.o verifica_particoes.o $(flags)
 
 main.o: main.c
 	gcc -c main.c $(flags)
 
 chrono.o: chrono.c
 	gcc -c chrono.c $(flags)
+
+verifica_particoes.o: verifica_particoes.c
+	gcc -c verifica_particoes.c $(flags)
 
 clean:
 	rm -f *~ *.o
