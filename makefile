@@ -22,4 +22,4 @@ clean:
 	rm -f *~ *.o
 
 purge: clean
-	rm -f bsearch-A bsearch-B
+	rm -f $(name)

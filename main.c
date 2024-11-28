@@ -14,6 +14,7 @@
 #include "verifica_particoes.h"
 
 #define MAX_THREADS 8
+#define PARTITION_SIZE 10000
 #define DEBUG 0
 
 #define ll long long
@@ -22,20 +23,23 @@ pthread_t threads[MAX_THREADS];
 int threads_ids[MAX_THREADS];
 pthread_barrier_t thread_barrier;
 
-ll* partialResults[MAX_THREADS]; // Resultado do array para cada thread
-int* localPos[MAX_THREADS]; // Índice inicial para cada thread
+// ll* partialResults[MAX_THREADS]; // Resultado do array para cada thread
+// int* localPos[MAX_THREADS]; // Índice inicial para cada thread
+
+int localPos[MAX_THREADS][PARTITION_SIZE];
+ll* partialResults[PARTITION_SIZE][MAX_THREADS]; // Resultado do array para cada partição
 
 int nElements, nPartition, nThreads;
 
 #if DEBUG
 ll input[] = {8, 4, 13, 7, 11, 100, 44, 3, 7, 7, 100, 110, 46, 44};
-ll partitionArr[] = {0, 12, 70, 90, LLONG_MAX};
+ll partitionArr[] = {12, 70, 90, LLONG_MAX};
 #else
 ll* input;
 ll* partitionArr;
 #endif
 
-void printLLArray(ll* arr, int arrSize) {
+void print_ll_array(ll* arr, int arrSize) {
     printf("[");
     for (int i = 0; i < arrSize-1; i++) {
         printf("%lld, ", arr[i]);
@@ -43,7 +47,7 @@ void printLLArray(ll* arr, int arrSize) {
     printf("%lld]\n", arr[arrSize-1]);
 }
 
-void printIntArray(int* arr, int arrSize) {
+void print_int_array(int* arr, int arrSize) {
     printf("[");
     for (int i = 0; i < arrSize-1; i++) {
         printf("%d, ", arr[i]);
@@ -55,7 +59,7 @@ int compare(const void* a, const void* b) {
    return (*(ll*)a - *(ll*)b);
 }
 
-long long geraAleatorioLL() {
+long long gera_aleatorio_ll() {
     int a = rand(); // Returns a pseudo-random integer between 0 and RAND_MAX.
     int b = rand();
     // long long v = (long long)a * 100 + b;
@@ -63,48 +67,61 @@ long long geraAleatorioLL() {
     return v;
 }
 
-void calculateIndexes(int threadIndex, int* first, int* last) {
-    int baseChunkSize = nPartition / nThreads;
-    int remainder = nPartition % nThreads;
+void calculate_indexes(int threadIndex, int* first, int* last) {
+    int baseChunkSize = nElements / nThreads;
+    int remainder = nElements % nThreads;
 
     if (threadIndex < remainder) {
-        *first = threadIndex * (baseChunkSize + 1) + 1;
+        *first = threadIndex * (baseChunkSize + 1);
         *last = *first + baseChunkSize;
     } else {
-        *first = threadIndex * baseChunkSize + remainder + 1;
+        *first = threadIndex * baseChunkSize + remainder;
         *last = *first + baseChunkSize - 1;
     }
+}
+
+int upper_bound(ll arr[], int n, int target) {
+    int lo = 0, hi = n - 1;
+    int res = n;
+
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+
+        if (arr[mid] > target) {
+            res = mid;
+            hi = mid - 1;
+        }
+        else {
+            lo = mid + 1;
+        }
+    }
+    return res;
 }
 
 void* thread_worker(void* ptr) {
     int index = *((int*) ptr);
     int first, last;
-    calculateIndexes(index, &first, &last);
-    // printf("Thread %d: first = %d, last = %d\n", index, first, last);
+    calculate_indexes(index, &first, &last);
 
-    localPos[index] = malloc(sizeof(int) * (last-first+2));
+    for (int i = 0; i < PARTITION_SIZE; i++) {
+        localPos[index][i] = 0;
+    }
 
     while (1) {
         pthread_barrier_wait(&thread_barrier);
 
-        int k = 0;
         for (int i = first; i <= last; i++) {
-            for (int j = 0; j < nElements; j++) {
-                if (input[j] >= partitionArr[i-1] && input[j] < partitionArr[i]) {
-                    partialResults[index][k] = input[j];
-                    k++;
-                }
-            }
-            localPos[index][i - first] = k;
+            // Retorna o índice da partição que o elemento pertence
+            int partitionIdx = upper_bound(partitionArr, nPartition, input[i]);
+            partialResults[partitionIdx][index][localPos[index][partitionIdx]] = input[i];
+            localPos[index][partitionIdx]++;
         }
-        localPos[index][last-first+1] = -1;
-        partialResults[index][k] = -1;
         
         #if DEBUG
-        printf("Thread %d: ", index);
-        printLLArray(partialResults[index], k);
-        printf("Thread %d: localPos: ", index);
-        printIntArray(localPos[index], last-first+1);
+        // printf("Thread %d: ", index);
+        // printLLArray(partialResults[index], k);
+        // printf("Thread %d: localPos: ", index);
+        // printIntArray(localPos[index], last-first+1);
         #endif
 
         pthread_barrier_wait(&thread_barrier);
@@ -125,35 +142,29 @@ void multi_partition(ll* input, int n, ll* P, int np, ll* output, int* pos) {
         pthread_create(&threads[i], NULL, thread_worker, &threads_ids[i]);
     }
     thread_worker(&threads_ids[0]);
-    
+
     int k = 0;
-    for (int i = 0; i < nThreads; i++) {
-        int j = 0;
-        while (partialResults[i][j] != -1) {
-            output[k] = partialResults[i][j];
-            j++;
-            k++;
+    for (int i = 0; i <  np; i++) {
+        for (int j = 0; j < nThreads; j++) {
+            for (int l = 0; l < localPos[j][i]; l++) {
+                output[k] = partialResults[i][j][l];
+                k++;
+            }
         }
     }
     
     pos[0] = 0;
-    int previousPos = 0;
-    k = 1;
-    for (int i = 0; i < nThreads; i++) {
-        int j = 0;
-        while (localPos[i][j] != -1) {
-            // printf("localPos[%d][%d] = %d\n", i, j, localPos[i][j]);
-            pos[k] = localPos[i][j] + previousPos;
-            j++;
-            k++;
+    for (int i = 0; i < np-1; i++) {
+        pos[i+1] = pos[i];
+        for (int j = 0; j < nThreads; j++) {
+            pos[i+1] += localPos[j][i];
         }
-        previousPos = pos[k-1];
     }
 }
 
 int main(int argc, char* argv[]) {
     srand(time(NULL));
-    nElements = 16000000;
+    nElements = 8000000;
 
     if (argc != 3) {
          printf("Usage: %s <nPartition> <nThreads>\n", argv[0]); 
@@ -180,34 +191,35 @@ int main(int argc, char* argv[]) {
     #else
     input = malloc(sizeof(ll) * nElements);
     for (int i = 0; i < nElements; i++) {
-        input[i] = geraAleatorioLL();
+        input[i] = gera_aleatorio_ll();
     }
     #endif
 
     #if DEBUG
     nPartition = 4;
     #else
-    partitionArr = malloc(sizeof(ll) * (nPartition+1));
-    partitionArr[0] = 0;
-    for (int i = 1; i < nPartition; i++) {
-        partitionArr[i] = geraAleatorioLL();
+    partitionArr = malloc(sizeof(ll) * (nPartition));
+    for (int i = 0; i < nPartition; i++) {
+        partitionArr[i] = gera_aleatorio_ll();
     }
-    partitionArr[nPartition] = LLONG_MAX;
-    qsort(partitionArr, nPartition, sizeof(ll), compare);
+    qsort(partitionArr, nPartition-1, sizeof(ll), compare);
+    partitionArr[nPartition-1] = LLONG_MAX;
     #endif
 
     ll* output = malloc(sizeof(ll) * nElements);
     int* pos = malloc(sizeof(int) * nPartition);
 
-    for (int i = 0; i < nThreads; i++) {
-        partialResults[i] = malloc(sizeof(ll) * nElements);
+    for (int i = 0; i < nPartition; i++) {
+        for (int j = 0; j < nThreads; j++) {
+            partialResults[i][j] = malloc(sizeof(ll) * nElements/nThreads);
+        }
     }
 
     #if DEBUG
     printf("Input array: ");
     printLLArray(input, nElements);
     printf("Partition array: ");
-    printLLArray(partitionArr, nPartition+1);
+    printLLArray(partitionArr, nPartition);
     #endif
 
     chronometer_t parallelPartitionTime;
@@ -219,9 +231,9 @@ int main(int argc, char* argv[]) {
 
     #if DEBUG
     printf("Output array: ");
-    printLLArray(output, nElements);
+    print_ll_array(output, nElements);
     printf("Pos array: ");
-    printIntArray(pos, nPartition);
+    print_int_array(pos, nPartition);
     #endif
 
     chrono_stop(&parallelPartitionTime);
@@ -242,9 +254,10 @@ int main(int argc, char* argv[]) {
     free(output);
     free(pos);
 
-    for (int i = 0; i < nThreads; i++) {
-        free(partialResults[i]);
-        free(localPos[i]);
+    for (int i = 0; i < nPartition; i++) {
+        for (int j = 0; j < nThreads; j++) {
+            free(partialResults[i][j]);
+        }
     }
 
     return 0;
