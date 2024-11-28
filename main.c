@@ -18,10 +18,13 @@
 #define DEBUG 0
 
 #define ll long long
+#define MAX_TOTAL_ELEMENTS (500*250*250)
 
 pthread_t threads[MAX_THREADS];
 int threads_ids[MAX_THREADS];
 pthread_barrier_t thread_barrier;
+ll inputG[MAX_TOTAL_ELEMENTS];
+ll partitionArrG[MAX_TOTAL_ELEMENTS];
 
 // ll* partialResults[MAX_THREADS]; // Resultado do array para cada thread
 // int* localPos[MAX_THREADS]; // Índice inicial para cada thread
@@ -165,6 +168,7 @@ void multi_partition(ll* input, int n, ll* P, int np, ll* output, int* pos) {
 int main(int argc, char* argv[]) {
     srand(time(NULL));
     nElements = 8000000;
+    int NTIMES = 10;
 
     if (argc != 3) {
          printf("Usage: %s <nPartition> <nThreads>\n", argv[0]); 
@@ -195,6 +199,12 @@ int main(int argc, char* argv[]) {
     }
     #endif
 
+    for (int i = 0; i < MAX_TOTAL_ELEMENTS ; i++) {
+        inputG[i] = input[i%nElements];
+    }
+
+    free(input);
+
     #if DEBUG
     nPartition = 4;
     #else
@@ -205,6 +215,13 @@ int main(int argc, char* argv[]) {
     qsort(partitionArr, nPartition-1, sizeof(ll), compare);
     partitionArr[nPartition-1] = LLONG_MAX;
     #endif
+
+
+    for (int i = 0; i < MAX_TOTAL_ELEMENTS; i++) {
+        partitionArrG[i] = partitionArr[i%nPartition];
+    }
+
+    free(partitionArr);
 
     ll* output = malloc(sizeof(ll) * nElements);
     int* pos = malloc(sizeof(int) * nPartition);
@@ -227,7 +244,26 @@ int main(int argc, char* argv[]) {
     chrono_start(&parallelPartitionTime);
 
     // Execução
-    multi_partition(input, nElements, partitionArr, nPartition, output, pos);
+    int start_position_input = 0;
+    int start_position_partition = 0;
+    input = &inputG[start_position_input];
+    partitionArr = &partitionArrG[start_position_partition];
+    for (int i = 0; i < NTIMES; i++) {
+        multi_partition(input, nElements, partitionArr, nPartition, output, pos);
+
+        start_position_input += nElements;
+        start_position_partition += nPartition;
+
+        if ((start_position_input + nElements) > MAX_TOTAL_ELEMENTS) 
+            start_position_input = 0;
+        input = &inputG[start_position_input];
+
+        if ((start_position_partition + nPartition )> MAX_TOTAL_ELEMENTS) 
+            start_position_partition = 0;
+        partitionArr = &partitionArrG[start_position_partition];
+    }
+    
+    // multi_partition(input, nElements, partitionArr, nPartition, output, pos);
 
     #if DEBUG
     printf("Output array: ");
@@ -248,8 +284,8 @@ int main(int argc, char* argv[]) {
     verifica_particoes(input, nElements, partitionArr, nPartition, output, pos);
 
     #if !DEBUG
-    free(input);
-    free(partitionArr);
+    // free(input);
+    // free(partitionArr);
     #endif
     free(output);
     free(pos);
