@@ -14,8 +14,8 @@ void verifica_particoes(long long *Input, int n, long long *P, int np, long long
         for (int j = Pos[i]; j < ((i == np - 1) ? n : Pos[i + 1]); j++) {
             if (Output[j] < faixa_min || Output[j] >= faixa_max) {
                 erro = 1;
-                printf("Erro na faixa %d: elemento %lld fora do intervalo [%lld, %lld)\n", 
-                       i, Output[j], faixa_min, faixa_max);
+                // printf("Erro na faixa %d: elemento %lld fora do intervalo [%lld, %lld)\n", 
+                    //    i, Output[j], faixa_min, faixa_max);
             }
         }
 
