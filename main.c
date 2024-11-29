@@ -15,6 +15,7 @@
 
 #define MAX_THREADS 8
 #define PARTITION_SIZE 10000
+#define NTIMES 10
 #define DEBUG 0
 
 #define ll long long
@@ -137,13 +138,20 @@ void* thread_worker(void* ptr) {
 }
 
 void multi_partition(ll* input, int n, ll* P, int np, ll* output, int* pos) {
-    pthread_barrier_init(&thread_barrier, NULL, nThreads);
+    static int initialized = 0;
 
-    threads_ids[0] = 0;
-    for (int i = 1; i < nThreads; i++) {
-        threads_ids[i] = i;
-        pthread_create(&threads[i], NULL, thread_worker, &threads_ids[i]);
+    if (!initialized) {
+        pthread_barrier_init(&thread_barrier, NULL, nThreads);
+
+        threads_ids[0] = 0;
+        for (int i = 1; i < nThreads; i++) {
+            threads_ids[i] = i;
+            pthread_create(&threads[i], NULL, thread_worker, &threads_ids[i]);
+        }
+
+        initialized = 1;
     }
+
     thread_worker(&threads_ids[0]);
 
     int k = 0;
@@ -168,7 +176,6 @@ void multi_partition(ll* input, int n, ll* P, int np, ll* output, int* pos) {
 int main(int argc, char* argv[]) {
     srand(time(NULL));
     nElements = 8000000;
-    int NTIMES = 10;
 
     if (argc != 3) {
          printf("Usage: %s <nPartition> <nThreads>\n", argv[0]); 
@@ -258,13 +265,11 @@ int main(int argc, char* argv[]) {
             start_position_input = 0;
         input = &inputG[start_position_input];
 
-        if ((start_position_partition + nPartition )> MAX_TOTAL_ELEMENTS) 
+        if ((start_position_partition + nPartition) > MAX_TOTAL_ELEMENTS) 
             start_position_partition = 0;
         partitionArr = &partitionArrG[start_position_partition];
     }
     
-    // multi_partition(input, nElements, partitionArr, nPartition, output, pos);
-
     #if DEBUG
     printf("Output array: ");
     print_ll_array(output, nElements);
