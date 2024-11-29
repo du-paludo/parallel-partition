@@ -95,7 +95,19 @@ ll upper_bound(ll arr[], int n, ll target) {
 void* thread_worker(void* ptr) {
     int index = *((int*) ptr);
     int first, last;
+    int* currArrSize = malloc(sizeof(int) * nPartition);
+    for (int i = 0; i < nPartition; i++) {
+        currArrSize[i] = 16;
+    }
     calculate_indexes(index, &first, &last);
+
+    for (int i = 0; i < nPartition; i++) {
+        partialResults[i][index] = malloc(sizeof(ll) * currArrSize[i]);
+        if (partialResults[i][index] == NULL) {
+            printf("Failed to alloc partialResults[%d][%d]\n", i, index);
+            exit(1);
+        }
+    }
 
     while (1) {
         pthread_barrier_wait(&thread_barrier);
@@ -109,6 +121,15 @@ void* thread_worker(void* ptr) {
             int partitionIdx = upper_bound(partitionArr, nPartition, input[i]);
             partialResults[partitionIdx][index][localPos[index][partitionIdx]] = input[i];
             localPos[index][partitionIdx]++;
+
+            if (localPos[index][partitionIdx] == currArrSize[partitionIdx]) {
+                currArrSize[partitionIdx] *= 2;
+                partialResults[partitionIdx][index] = realloc(partialResults[partitionIdx][index], sizeof(ll) * currArrSize[partitionIdx]);
+                if (partialResults[partitionIdx][index] == NULL) {
+                    printf("Failed to realloc partialResults[%d][%d]\n", partitionIdx, index);
+                    exit(1);
+                }
+            }
         }
         
         // #if DEBUG
@@ -245,15 +266,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    for (int i = 0; i < nPartition; i++) {
-        for (int j = 0; j < nThreads; j++) {
-            partialResults[i][j] = malloc(sizeof(ll) * nElements/nThreads);
-            if (partialResults[i][j] == NULL) {
-                printf("Failed to alloc partialResults[%d][%d]\n", i, j);
-                return 1;
-            }
-        }
-    }
+    // for (int i = 0; i < nPartition; i++) {
+    //     for (int j = 0; j < nThreads; j++) {
+    //         partialResults[i][j] = malloc(sizeof(ll) * nElements/nThreads);
+    //         if (partialResults[i][j] == NULL) {
+    //             printf("Failed to alloc partialResults[%d][%d]\n", i, j);
+    //             return 1;
+    //         }
+    //     }
+    // }
 
     chronometer_t parallelPartitionTime;
     chrono_reset(&parallelPartitionTime);
@@ -304,11 +325,11 @@ int main(int argc, char* argv[]) {
     free(output);
     free(pos);
 
-    for (int i = 0; i < nPartition; i++) {
-        for (int j = 0; j < nThreads; j++) {
-            free(partialResults[i][j]);
-        }
-    }
+    // for (int i = 0; i < nPartition; i++) {
+    //     for (int j = 0; j < nThreads; j++) {
+    //         free(partialResults[i][j]);
+    //     }
+    // }
 
     return 0;
 }
