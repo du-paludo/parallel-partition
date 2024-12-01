@@ -316,9 +316,9 @@ int main(int argc, char* argv[]) {
     double average_time = total_time_in_seconds / (NTIMES);
     printf("Average time: %lf s\n", average_time);
                                   
-    double ops = nElements/total_time_in_seconds;
-    double megaops = ops/1000000;
-    printf("Throughput: %lf MOP/s\n", megaops);
+    double eps = nElements/total_time_in_seconds * NTIMES;
+    double megaeps = eps/1000000;
+    printf("Throughput: %lf MEPS/s\n", megaeps);
 
     verifica_particoes(input, nElements, partitionArr, nPartition, output, pos);
 
